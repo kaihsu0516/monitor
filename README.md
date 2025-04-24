@@ -57,4 +57,4 @@
 ```helm secrets``` 是一個強大的 Helm 插件，通過與 GPG 或 SOPS 等加密工具集成，解決了在版本控制系統中安全管理 Helm Chart 敏感資料的痛點。它使得實現 Secrets-in-Git 和遵循 GitOps 實踐變得更加容易，但同時也引入了對金鑰管理的依賴。對於需要安全、可追踪地管理 Kubernetes 配置密碼的團隊來說，```helm secrets``` 是一個非常有價值的工具。
 
 ## Ref:
-請參考 [Helm Secrets 使用方法](helm_secrets.md) 進行設定。
+請參考 [Helm Secrets 使用方法](helm_secrets_sop.md) 進行設定。
