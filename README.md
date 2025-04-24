@@ -39,7 +39,7 @@ helm secrets --help
 ## 4. 核心概念與工作流程 (Core Concepts & Workflow)
 基本的工作流程如下：
 
-創建敏感值文件: 將你的敏感資料放入一個獨立的 YAML 文件中，通常命名為 secrets.yaml 或 secrets.<environment>.yaml (例如 secrets.production.yaml)。
+創建敏感值文件: 將你的敏感資料放入一個獨立的 YAML 文件中，通常命名為 ```secrets.yaml``` 或 ```secrets.<environment>.yaml``` (例如 secrets.production.yaml)。
 
 ```YAML
 
@@ -48,8 +48,9 @@ database:
   password: "mySuperSecretPassword"
 api:
   key: "very-sensitive-api-key"
-加密文件: 使用 helm secrets encrypt 命令和你的加密後端（如 GPG 或 SOPS）來加密這個文件。加密後的文件會覆蓋原文件或生成一個新的加密文件（取決於你的配置和後端）。
 ```
+加密文件: 使用 ```helm secrets encrypt``` 命令和你的加密後端（如 GPG 或 SOPS）來加密這個文件。加密後的文件會覆蓋原文件或生成一個新的加密文件（取決於你的配置和後端）。
+
 ```Bash
 
 # 使用 GPG (假設你已經設定好 GPG 金鑰)
@@ -59,9 +60,9 @@ helm secrets encrypt secrets.yaml
 ```
 加密後的 secrets.yaml 文件內容會變成無法直接閱讀的密文。
 
-提交加密文件: 將加密後的 secrets.yaml 文件提交到你的版本控制系統（Git）。明文的 secrets.yaml 不應該被提交。你可以將其添加到 .gitignore 文件中。
+提交加密文件: 將加密後的 ```secrets.yaml``` 文件提交到你的版本控制系統（Git）。明文的 ```secrets.yaml``` 不應該被提交。你可以將其添加到 .gitignore 文件中。
 
-在 Chart 中引用: 你可以像引用普通 values.yaml 文件一樣，在 Helm 命令中通過 -f 或 --values 參數引用加密的文件。helm secrets 會攔截這些命令，在 Helm 處理之前先解密文件。
+在 Chart 中引用: 你可以像引用普通 ```values.yaml``` 文件一樣，在 Helm 命令中通過 ```-f``` 或 ```--values``` 參數引用加密的文件。```helm secrets``` 會攔截這些命令，在 Helm 處理之前先解密文件。
 
 ```YAML
 
@@ -81,7 +82,7 @@ replicaCount: 1
 #   dbPassword: {{ .Values.database.password }}
 #   apiKey: {{ .Values.api.key }}
 ```
-部署/渲染 Chart: 使用 helm secrets 提供的命令（如 helm secrets install, helm secrets upgrade, helm secrets template）來部署或渲染 Chart。這些命令會自動尋找並解密環境中被引用的 secrets.*.yaml 文件。
+部署/渲染 Chart: 使用 ```helm secrets``` 提供的命令（如 ```helm secrets install```, ```helm secrets upgrade```, ```helm secrets template```）來部署或渲染 Chart。這些命令會自動尋找並解密環境中被引用的 ```secrets.*.yaml``` 文件。
 
 ```Bash
 
