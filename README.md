@@ -1,93 +1,131 @@
-# monitor
+# Helm Secrets 使用方法與詳細說明
 
+#### Helm Secrets 是 Helm 的一個插件，主要用於安全地管理 Kubernetes 部署過程中的敏感資訊（如密碼、API 金鑰等），並且能與 Git 工作流無縫整合。其核心是結合 Mozilla SOPS（Secrets OPerationS）工具，實現對 YAML/JSON 等格式的加密與解密。以下將詳細整理其安裝、基本原理、實作步驟與常見應用場景，方便你做為筆記參考。
 
+## 一、核心原理與功能
+### 敏感資訊加密：
+將 Helm Chart 需用到的 secrets 檔案（如 secrets.yaml）加密，安全存放於 Git。
 
-## Getting started
+### 動態解密：
+部署時自動解密，確保敏感資訊只在需要時暴露於記憶體。
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+### 多後端支援：
+可結合 SOPS 支援的 PGP、AWS KMS、GCP KMS、Azure Key Vault 等多種金鑰管理方式。
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### GitOps 友善：適合與 ArgoCD、Flux 等自動化部署工具整合。
 
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+# 二、安裝步驟
+### 安裝 Helm Secrets 插件
 
 ```
-cd existing_repo
-git remote add origin https://git.dc.zyxel.com.tw/nt200162/monitor.git
-git branch -M main
-git push -uf origin main
+helm plugin install https://github.com/jkroepke/helm-secrets
+```
+### 安裝 SOPS 工具
+
+
+#### 直接下載二進制檔（選版本）
+```
+wget https://github.com/mozilla/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
+sudo mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops
+sudo chmod +x /usr/local/bin/sops
 ```
 
-## Integrate with your tools
+#### 或使用 snap（若系統支援）
+```
+sudo snap install sops
+```
 
-- [ ] [Set up project integrations](https://git.dc.zyxel.com.tw/nt200162/monitor/-/settings/integrations)
+### 若用 PGP/GPG 加密：
+```
+sudo apt install gnupg
+gpg --full-generate-key  # 生成金鑰對
+gpg --list-secret-keys   # 查詢 fingerprint
 
-## Collaborate with your team
+# AWS KMS（需預先設定 AWS CLI 權限）
+# GCP KMS（需安裝 gcloud CLI）
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+## 三、加密流程（以 GPG 為例）
+### 產生 GPG 金鑰對
+```
+gpg --full-generate-key
+```
+#### 依指示輸入姓名、Email、密碼等資訊。
 
-## Test and Deploy
+### 建立 .sops.yaml 規則檔
 
-Use the built-in continuous integration in GitLab.
+#### 指定哪些欄位要加密、使用哪個金鑰 fingerprint。
+範例內容：
+```
+creation_rules:
+- path_regex: secrets\..*\.yaml$
+  key_groups:
+    - pgp: <YOUR_GPG_FINGERPRINT>
+```    
+### 撰寫要加密的 secrets 檔案
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+例如 secrets.prod.yaml，內容如：
+```
+API_KEY: my-secret-key
+DB_PASSWORD: my-db-password
+```
+### 加密檔案
+```
+helm secrets enc secrets.prod.yaml
+```
+產生加密後的 secrets.prod.yaml（內容已被 SOPS 加密）。
 
-***
+## 四、解密與部署流程
+### 解密檔案（本地測試或除錯）
 
-# Editing this README
+```
+helm secrets dec secrets.prod.yaml
+```
+會產生一個暫時的明文檔案 secrets.prod.yaml.dec。
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### 部署 Chart（自動解密）
 
-## Suggestions for a good README
+```
+helm secrets install my-release ./my-chart -f secrets.prod.yaml
+```
+在部署時，Helm Secrets 會自動解密 secrets 檔案並傳遞給 Helm。
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### 升級/回滾等操作也同理
 
-## Name
-Choose a self-explaining name for your project.
+```
+helm secrets upgrade my-release ./my-chart -f secrets.prod.yaml
+```
+## 五、常見應用場景
+### 團隊協作：
+所有敏感資訊都以加密狀態存放於 Git，團隊成員可安全協作。
+### CI/CD 自動化：
+配合 GitOps 工具（如 ArgoCD），自動解密並部署，無需人工干預。
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 多雲環境整合：
+可根據不同環境選擇不同的 KMS 後端，靈活應對各種安全需求。
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## 六、進階補充
+### 只加密部分欄位：
+可透過 .sops.yaml 規則，僅加密 YAML 中特定 key（如 password、token）。
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### 與 vals 整合：
+若需從外部來源（如 AWS SecretManager）動態拉取 secrets，可結合 vals 工具。
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Git Diff 支援：
+安裝後會自動設定 Git diff，方便檢視加密檔案的變更。
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+## 七、常用指令速查
+### 指令	功能說明
+```
+helm secrets enc <file>	加密 secrets 檔案
+helm secrets dec <file>	解密 secrets 檔案
+helm secrets view <file>	只讀取解密內容（不生成檔案）
+helm secrets install ...	安裝時自動解密
+helm secrets upgrade ...	升級時自動解密
+```
+## 八、注意事項
+- 加密檔案（如 secrets.prod.yaml）才應 push 到 Git，解密檔案（如 .dec）請勿上傳。
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+- 金鑰管理需謹慎，遺失私鑰將無法解密。
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- 若用雲端 KMS，請確保 CI/CD pipeline 有對應權限。
