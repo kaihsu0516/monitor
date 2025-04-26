@@ -1,5 +1,5 @@
 creation_rules:
-  - path_regex: secrets/.*/values.yaml$ # 只加密 secrets/ 目錄下的 yaml 文件
+  - path_regex: .*.dec$ # 只加密 secrets/ 目錄下的 yaml 文件
     key_groups:
       - pgp:
           - 40FEE37AB068AC2D6665F0887AD85B2860DA85FC # kai.hsu-test@zyxel.com.tw

@@ -117,7 +117,9 @@
 
 * **執行加密:**
     ```bash
-    helm secrets encrypt secrets.yaml
+    helm secrets encrypt -i secrets.yaml 
+    or
+    helm secrets encrypt secrets.dec > secrets.yaml
     ```
 * **GPG Agent 提示:** 如果你的 GPG 私鑰有密碼保護，GPG Agent 可能會彈出視窗或在終端提示你輸入密碼以允許 SOPS 使用私鑰進行操作（即使加密也可能需要簽名）。
 * **驗證:**
